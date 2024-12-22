@@ -108,25 +108,43 @@ const char *auth_method_help[][4] = {
 	{ NULL, NULL, NULL, NULL },
 };
 
-int cmd_wpa_type(struct cli_def *cli, struct cli_command *parent) {
-  struct cli_command *cmd_wpa_type = cli_register_command(cli, parent, "wpa_type", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid name");
+int ssid_num_validator(struct cli_def *cli, const char *name, const char *value) {
+  int num = atoi(value);
+  if (num >= 1 && num <= 4) {
+    return CLI_OK;
+  }
+  cli_error(cli, "Invalid value for %s. Must be between 1 and 4.", name);
+  return CLI_ERROR;
+}
+
+int cmd_wpa_type_callback(struct cli_def *cli, const char *command, char *argv[], int argc) {
+	cli_print(cli, "Command: %s", command);
+	cli_print(cli, "Arguments count: %d", argc);
+	for (int i = 0; i < argc; i++) {
+		cli_print(cli, "Argument %d: %s", i, argv[i]);
+	}
+	return CLI_OK;
+}
+
+int cmd_wpa_type(struct cli_def *cli, struct cli_optarg *parent) {
+	struct cli_command *cmd_wpa_type = cli_register_optarg_command(parent, "wpa_type", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid name");
 
 	for (int i = 0; auth_method_help[i][0] != NULL; i++) {
-    cli_register_command(cli, cmd_wpa_type, auth_method_help[i][0], NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, auth_method_help[i][1]);
+		cli_register_command(cli, cmd_wpa_type, auth_method_help[i][0], cmd_wpa_type_callback, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, auth_method_help[i][1]);
 	}
-  return CLI_OK;
+	return CLI_OK;
 }
 
 int cmd_authentication_method(struct cli_def *cli, struct cli_command *parent) {
   struct cli_command *cmd_authentication_method = cli_register_command(cli, parent, "authentication_method", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid name");
 
   struct cli_command *cmd_ssid_name = cli_register_command(cli, cmd_authentication_method, "ssid_name", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid name");
-  cli_register_optarg(cmd_ssid_name, "ssid_name", CLI_CMD_ARGUMENT, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "set ssid wireless name", auto_completor, NULL, NULL);
-  cmd_wpa_type(cli, cmd_ssid_name);
+  struct cli_optarg* optarg_ssid_name = cli_register_optarg(cmd_ssid_name, "ssid_name", CLI_CMD_ARGUMENT, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "set ssid wireless name", auto_completor, NULL, NULL);
+  cmd_wpa_type(cli, optarg_ssid_name);
 
   struct cli_command *cmd_ssid_num = cli_register_command(cli, cmd_authentication_method, "ssid_num", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid number");
-  cli_register_optarg(cmd_ssid_num, "ssid_num", CLI_CMD_ARGUMENT, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "set ssid wireless number", auto_completor, NULL, NULL);
-  cmd_wpa_type(cli, cmd_ssid_num);
+  struct cli_optarg* optarg_ssid_num = cli_register_optarg(cmd_ssid_num, "ssid_num", CLI_CMD_ARGUMENT, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "set ssid wireless number", auto_completor, ssid_num_validator, NULL);
+  cmd_wpa_type(cli, optarg_ssid_num);
 
   return CLI_OK;
 }
@@ -555,8 +573,8 @@ void run_child(int x) {
       "show long command name with "
       "newline\nand_a_really_long_line_that_is_much_longer_than_80_columns_to_show_that_wrap_case");
 
-  cli_set_auth_callback(cli, check_auth);
-  cli_set_enable_callback(cli, check_enable);
+  // cli_set_auth_callback(cli, check_auth);
+  // cli_set_enable_callback(cli, check_enable);
   // Test reading from a file
   {
     FILE *fh;

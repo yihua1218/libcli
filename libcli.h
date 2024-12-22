@@ -156,6 +156,7 @@ struct cli_optarg {
   int (*validator)(struct cli_def *, const char *, const char *);
   int (*transient_mode)(struct cli_def *, const char *, const char *);
   struct cli_optarg *next;
+  struct cli_command *children;
 };
 
 struct cli_optarg_pair {
@@ -834,6 +835,10 @@ int cli_enable(struct cli_def *cli, const char *command, char *argv[], int argc)
  * @return     always returns CLI_QUIT
  */
 int cli_disable(struct cli_def *cli, const char *command, char *argv[], int argc);
+
+struct cli_command *cli_register_optarg_command(struct cli_optarg *optarg, const char *command,
+												int (*callback)(struct cli_def *cli, const char *, char **, int),
+												int privilege, int mode, const char *help);
 
 #ifdef __cplusplus
 }

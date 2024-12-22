@@ -2282,6 +2282,42 @@ CLEANUP:
   return optarg;
 }
 
+struct cli_command *cli_register_optarg_command(struct cli_optarg *optarg, const char *command,
+												int (*callback)(struct cli_def *cli, const char *, char **, int),
+												int privilege, int mode, const char *help) {
+  struct cli_command *c;
+
+  if (!command) return NULL;
+  if (!(c = calloc(sizeof(struct cli_command), 1))) return NULL;
+
+  c->callback = callback;
+  c->next = NULL;
+  if (!(c->command = strdup(command))) {
+	free(c);
+	return NULL;
+  }
+
+  c->privilege = privilege;
+  c->mode = mode;
+  if (help && !(c->help = strdup(help))) {
+	free(c->command);
+	free(c);
+	return NULL;
+  }
+
+  if (optarg->children) {
+	struct cli_command *child = optarg->children;
+	while (child->next) {
+	  child = child->next;
+	}
+	child->next = c;
+  } else {
+	optarg->children = c;
+  }
+
+  return c;
+}
+
 int cli_unregister_optarg(struct cli_command *cmd, const char *name) {
   struct cli_optarg *ptr;
   struct cli_optarg *lastptr;
@@ -3559,6 +3595,15 @@ static void cli_int_parse_optargs(struct cli_def *cli, struct cli_pipeline_stage
         is_last_word) {
       stage->status = cli_int_enter_buildmode(cli, stage, value);
       goto done;
+    }
+
+    // If this optarg has children commands, process them first
+    if (oaptr->children) {
+      struct cli_command *child_cmd = oaptr->children;
+      while (child_cmd) {
+        cli_int_parse_optargs(cli, stage, child_cmd, lastchar, comphelp);
+        child_cmd = child_cmd->next;
+      }
     }
 
     // Optional flags and arguments can appear multiple times, and in any order.  We only advance
