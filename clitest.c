@@ -463,16 +463,16 @@ void run_child(int x) {
   cli_regular_interval(cli, 5);
 
   // set 60 second idle timeout
-  cli_set_idle_timeout_callback(cli, 60, idle_timeout);
+  cli_set_idle_timeout_callback(cli, 600, idle_timeout);
   cli_register_command(cli, NULL, "test", cmd_test, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
   cli_register_command(cli, NULL, "simple", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
   cli_register_command(cli, NULL, "simon", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
 
   // cli_register_command(cli, NULL, "set", cmd_set, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
-  struct cli_command *cmd_set = cli_register_command(cli, NULL, "set", NULL, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
-  struct cli_command *cmd_wlan = cli_register_command(cli, cmd_set, "wlan", NULL, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
-  struct cli_command *cmd_24g = cli_register_command(cli, cmd_wlan, "2.4g", NULL, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
-  struct cli_command *cmd_5g = cli_register_command(cli, cmd_wlan, "5g", NULL, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
+  struct cli_command *cmd_set = cli_register_command(cli, NULL, "set", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
+  struct cli_command *cmd_wlan = cli_register_command(cli, cmd_set, "wlan", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
+  struct cli_command *cmd_24g = cli_register_command(cli, cmd_wlan, "2.4g", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
+  struct cli_command *cmd_5g = cli_register_command(cli, cmd_wlan, "5g", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
   cmd_authentication_method(cli, cmd_24g);
   cmd_authentication_method(cli, cmd_5g);
 
