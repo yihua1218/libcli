@@ -78,6 +78,59 @@ int cmd_test(struct cli_def *cli, const char *command, char *argv[], int argc) {
   return CLI_OK;
 }
 
+int auto_completor(struct cli_def *cli, const char *name, const char *value, struct cli_comphelp *comphelp) {
+	char text[256];
+	sprintf(text, "(%s)", name);
+
+	if (value == NULL || strncmp(text, value, strlen(value)) == 0) {
+		return cli_add_comphelp_entry(comphelp, text);
+	} else {
+		return CLI_OK;
+	}
+}
+
+// 0: wpa_type
+// 1: helptext
+// 2: secmode
+// 3: wpa_auth_type
+const char *auth_method_help[][4] = {
+	{"none_authentication", "set wireless ssid security authentication method No authentication", "0", NULL},
+	{"owe", "set wireless ssid security authentication method OWE", "5", NULL},
+	{"wpa_eap", "set wireless ssid authentication method mode wpaeap", "3", "3"},
+	{"wpa2_eap", "set wireless ssid authentication method mode wpa2eap", "3", "5"},
+	{"wpa_psk", "set wireless ssid authentication method mode wpapsk", "2", "3"},
+	{"wpa2_psk", "set wireless ssid authentication method mode wpa2psk", "2", "5"},
+	{"wpa2_mixed_eap", "set wireless ssid authentication method mode wpa2mixedeap", "3", "8"},
+	{"wpa2_mixed_psk", "set wireless ssid authentication method mode wpa2mixedpsk", "2", "8"},
+	{"wpa3_psk", "set wireless ssid authentication method mode wpa3psk", "2", "10"},
+	{"wpa3_mixed_psk", "set wireless ssid authentication method mode wpa3mixedpsk", "2", "11"},
+	{"wpa3_suite_b192", "set wireless ssid authentication method mode wpa3suiteb192", "3", "14"},
+	{ NULL, NULL, NULL, NULL },
+};
+
+int cmd_wpa_type(struct cli_def *cli, struct cli_command *parent) {
+  struct cli_command *cmd_wpa_type = cli_register_command(cli, parent, "wpa_type", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid name");
+
+	for (int i = 0; auth_method_help[i][0] != NULL; i++) {
+    cli_register_command(cli, cmd_wpa_type, auth_method_help[i][0], NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, auth_method_help[i][1]);
+	}
+  return CLI_OK;
+}
+
+int cmd_authentication_method(struct cli_def *cli, struct cli_command *parent) {
+  struct cli_command *cmd_authentication_method = cli_register_command(cli, parent, "authentication_method", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid name");
+
+  struct cli_command *cmd_ssid_name = cli_register_command(cli, cmd_authentication_method, "ssid_name", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid name");
+  cli_register_optarg(cmd_ssid_name, "ssid_name", CLI_CMD_ARGUMENT, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "set ssid wireless name", auto_completor, NULL, NULL);
+  cmd_wpa_type(cli, cmd_ssid_name);
+
+  struct cli_command *cmd_ssid_num = cli_register_command(cli, cmd_authentication_method, "ssid_num", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, "add wireless ssid number");
+  cli_register_optarg(cmd_ssid_num, "ssid_num", CLI_CMD_ARGUMENT, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "set ssid wireless number", auto_completor, NULL, NULL);
+  cmd_wpa_type(cli, cmd_ssid_num);
+
+  return CLI_OK;
+}
+
 int cmd_set(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc) {
   if (argc < 2 || strcmp(argv[0], "?") == 0) {
     cli_print(cli, "Specify a variable to set");
@@ -150,8 +203,8 @@ int cmd_context(struct cli_def *cli, UNUSED(const char *command), UNUSED(char *a
 }
 
 int check_auth(const char *username, const char *password) {
-  if (strcasecmp(username, "fred") != 0) return CLI_ERROR;
-  if (strcasecmp(password, "nerk") != 0) return CLI_ERROR;
+  if (strcasecmp(username, "admin") != 0) return CLI_ERROR;
+  if (strcasecmp(password, "admin") != 0) return CLI_ERROR;
   return CLI_OK;
 }
 
@@ -165,7 +218,7 @@ int regular_callback(struct cli_def *cli) {
 }
 
 int check_enable(const char *password) {
-  return !strcasecmp(password, "topsecret");
+  return !strcasecmp(password, "admin");
 }
 
 int idle_timeout(struct cli_def *cli) {
@@ -396,7 +449,15 @@ void run_child(int x) {
   cli_register_command(cli, NULL, "test", cmd_test, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
   cli_register_command(cli, NULL, "simple", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
   cli_register_command(cli, NULL, "simon", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
-  cli_register_command(cli, NULL, "set", cmd_set, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
+
+  // cli_register_command(cli, NULL, "set", cmd_set, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
+  struct cli_command *cmd_set = cli_register_command(cli, NULL, "set", NULL, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
+  struct cli_command *cmd_wlan = cli_register_command(cli, cmd_set, "wlan", NULL, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
+  struct cli_command *cmd_24g = cli_register_command(cli, cmd_wlan, "2.4g", NULL, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
+  struct cli_command *cmd_5g = cli_register_command(cli, cmd_wlan, "5g", NULL, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
+  cmd_authentication_method(cli, cmd_24g);
+  cmd_authentication_method(cli, cmd_5g);
+
   c = cli_register_command(cli, NULL, "show", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
   cli_register_command(cli, c, "regular", cmd_show_regular, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                        "Show the how many times cli_regular has run");
