@@ -2887,46 +2887,34 @@ static int cli_int_locate_command(struct cli_def *cli, struct cli_command *comma
 
       // Found a word!
       if (!c->children) {
-        // Last word
         if (!c->callback && !c->filter) {
           cli_error(cli, "No callback for \"%s\"", cli_command_name(cli, c));
-          return CLI_ERROR;
+          rc = CLI_ERROR;
         }
       } else {
-        if (start_word == c_words - 1) {
-          if (c->callback) goto CORRECT_CHECKS;
-
-          cli_error(cli, "Incomplete command");
-          return CLI_ERROR;
+        // Process optargs if any
+        if (c->optargs) {
+          cli_int_parse_optargs(cli, stage, c, '\0', NULL);
+          if (stage->status != CLI_OK) return stage->status;
         }
+
+        // Continue processing child commands
         rc = cli_int_locate_command(cli, c->children, command_type, start_word + 1, stage);
-        if (rc == CLI_ERROR_ARG) {
-          if (c->callback) {
-            rc = CLI_OK;
-            goto CORRECT_CHECKS;
-          }
-          // show the command from word 0 up until the 'bad' word at start_word+1
-          cli_error(cli, "Invalid command \"%s %s\"", cli_command_name(cli, c), stage->words[start_word + 1]);
-          return CLI_ERROR;
-        }
-        return rc;
       }
-
-      if (!c->callback && !c->filter) {
-        cli_error(cli, "Internal server error processing \"%s\"", cli_command_name(cli, c));
-        return CLI_ERROR;
-      }
-
-    CORRECT_CHECKS:
 
       if (rc == CLI_OK) {
         stage->command = c;
         stage->first_unmatched = start_word + 1;
-        stage->first_optarg = stage->first_unmatched;
-        // cli_int_parse_optargs will display any detected errors...
-        cli_int_parse_optargs(cli, stage, c, '\0', NULL);
-        rc = stage->status;
       }
+
+      // Check if the command has been fully specified
+      if (start_word == c_words - 1) {
+        if (c->callback) goto CORRECT_CHECKS;
+
+        cli_error(cli, "Incomplete command");
+        return CLI_ERROR;
+      }
+
       return rc;
     } else if (cli->mode > MODE_CONFIG && c->mode == MODE_CONFIG) {
       // Command matched but from another mode, remember it if we fail to find correct command
@@ -2952,6 +2940,10 @@ static int cli_int_locate_command(struct cli_def *cli, struct cli_command *comma
   if (start_word == 0) cli_error(cli, "Invalid command \"%s\"", stage->words[start_word]);
 
   return CLI_ERROR_ARG;
+
+CORRECT_CHECKS:
+  // ...existing code...
+  return CLI_OK;
 }
 
 int cli_int_validate_pipeline(struct cli_def *cli, struct cli_pipeline *pipeline) {
